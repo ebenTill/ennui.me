@@ -1,0 +1,16 @@
+<div id="primary">
+    <div class="inside">
+        $for(posts)$
+        <div class="story">
+            <div class="title"><a href="$url$" rel="bookmark" title="Permanent Link to $title$">$title$</a></div>
+            <div class="opacity08"><small>
+                    <i>$date$</i>
+            </small></div>
+            <br>
+            <p>$teaser$ <span class="read-on">&hellip;</span></p>
+            <a href="$url$">read more &raquo;</a>
+            <br>
+        </div>
+        $endfor$
+    </div>
+</div>

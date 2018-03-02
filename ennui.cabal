@@ -1,0 +1,24 @@
+name:               ennui
+version:            0.1.0.0
+build-type:         Simple
+cabal-version:      >= 1.10
+
+executable site
+  main-is:          site.hs
+  build-depends:    base == 4.*
+                  , hakyll == 4.9.*
+                  , ennui
+
+  ghc-options:      -threaded
+  default-language: Haskell2010
+
+
+library
+  hs-source-dirs:    src
+  exposed-modules:  WordPress
+                  , HakyllHelper
+                  , Pagination
+                  , Feed
+ build-depends:     base == 4.*
+                  , hakyll
+                  , pandoc
