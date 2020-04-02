@@ -43,5 +43,5 @@ fonts
 _cache/**
 
 update.sh
-dist-newstyle/**
-site/**
+dist-newstyle/
+site/
