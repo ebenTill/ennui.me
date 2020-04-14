@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"
+    xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Ennui & Me - Eben Till</title>
+        <link>https://ennui.me</link>
+        <description><![CDATA[RSS feed for ennui.me]]></description>
+        <atom:link href="https://ennui.me/rss.xml" rel="self"
+                   type="application/rss+xml" />
+        <lastBuildDate>Fri, 10 Apr 2020 23:43:00 UT</lastBuildDate>
+        <item>
+    <title>X Is Simply A Monoid In The Category Of Y-functor Part 2</title>
+    <link>https://ennui.me/2020-04-03%20X%20is%20just%20a%20monoid%20of%20Category%20Of%20Y%20Part%202/</link>
+    <description><![CDATA[<div id="primary">
+    <div class="inside">
+        <h1 class="title">X Is Simply A Monoid In The Category Of Y-functor Part 2</h1>
+        <p>Monads as monoids in the category of endofunctors are passé. They’re Banksy. They’re mid-2000’s The Killers. Interesting and exciting when we first discovered them, now trite and only to be enjoyed ironically.</p>
+<p>Applicative as monoids in the category of endofunctors <em>though</em>. These are Flying Lotus. They are Finnegan’s Wake. They are the Fluxus movement. They are all things you say you understand but deep down, we know it’s a trendy facade.</p>
+<p>First, a flying tour of an applicative functor. As the name implies, extend these upon a functor. If we map a function of greater than one arguements over a functor, we get a partially applied function inside the functor:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1"></a>  <span class="fu">fmap</span> (<span class="op">+</span>) (<span class="dt">Just</span> <span class="dv">2</span>) <span class="ot">=</span> <span class="dt">Just</span> (<span class="dv">2</span><span class="op">+</span>)</span></code></pre></div>
+<p>We’ve got no easy way to <em>apply</em> this, and none that work for all cases. Enter applicatives. The <code>&lt;*&gt;</code> operator lets us apply a functor function on the left over a functor value, e.g:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1"></a>  (<span class="fu">fmap</span> (<span class="op">+</span>) (<span class="dt">Just</span> <span class="dv">2</span>)) <span class="op">&lt;*&gt;</span> <span class="dt">Just</span> <span class="dv">3</span> <span class="op">==</span> <span class="dt">Just</span> <span class="dv">5</span></span></code></pre></div>
+<p>Applicatives form what is known as a <em>strong lax monoidal functor</em>. Don’t pout, look on the bright side - we know what <em>half</em> of those words mean. Let’s start with the easy part; all applicatives in Haskell are strong. The strength is defined by a natural transformation of <em>stA,B:A⊗F B→F(A⊗B)</em> , in Haskell that is:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1"></a><span class="ot">st ::</span> (a, f b) <span class="ot">-&gt;</span> f (a, b) </span>
+<span id="cb3-2"><a href="#cb3-2"></a>st (a, fb) <span class="ot">=</span> <span class="fu">fmap</span> ((,) a) fb</span></code></pre></div>
+<p>A <em>lax monoidal functor</em> is a functor between two categories that preserves the monoid each form together with a natural transformation:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1"></a><span class="ot">eta ::</span> <span class="dt">Applicative</span> f <span class="ot">=&gt;</span> (f a <span class="ot">-&gt;</span> f b) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f b</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="ot">unit ::</span> f ()</span></code></pre></div>
+<p>We’re putting together all the puzzle pieces to create a monoid in the category of endofunctors, but there will need to be a different kind of tensor - Monads compose, for Applicatives we’ll need to use what is known as the Day convolution. Contrary to <em>Notions of Computation as Monoids</em>, I’ve curried the function and had to make the existential quantification explicit:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">data</span> <span class="dt">Day</span> f g a <span class="ot">=</span> <span class="kw">forall</span> b c<span class="op">.</span> <span class="dt">Day</span> (f b) (g c) (b <span class="ot">-&gt;</span> c <span class="ot">-&gt;</span> a)</span></code></pre></div>
+<p>It can be thought of as such: a box <code>f</code> of <code>b</code>’s, a box <code>g</code> of <code>c</code>’s, with a function that takes <code>b</code> and <code>c</code> and returns some <code>a</code>.</p>
+<p>With the existential quantifications, we can’t derive functor with GHC but it’s trivial enough.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">instance</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Day</span> f g) <span class="kw">where</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a>  <span class="fu">fmap</span> f (<span class="dt">Day</span> x y g) <span class="ot">=</span> <span class="dt">Day</span> x y <span class="op">$</span> \b c <span class="ot">-&gt;</span> f (g b c)</span></code></pre></div>
+<p>Our identity remains the same but, as mentioned previously, the tensor has now changed. Our new tensor is thus:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">class</span> <span class="dt">Functor</span> m <span class="ot">=&gt;</span> <span class="dt">Monoid'</span> m <span class="kw">where</span></span>
+<span id="cb7-2"><a href="#cb7-2"></a><span class="ot">  unit ::</span> a <span class="ot">-&gt;</span> m a</span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="ot">  tensor ::</span> <span class="dt">Day</span> m m a <span class="ot">-&gt;</span> m a</span>
+<span id="cb7-4"><a href="#cb7-4"></a></span>
+<span id="cb7-5"><a href="#cb7-5"></a><span class="kw">instance</span> <span class="dt">Applicative</span> f <span class="ot">=&gt;</span> <span class="dt">Monoid'</span> (<span class="dt">App</span> f) <span class="kw">where</span></span>
+<span id="cb7-6"><a href="#cb7-6"></a>  unit (<span class="dt">Identity</span> x) <span class="ot">=</span> <span class="dt">F</span> <span class="op">$</span> <span class="fu">pure</span> x</span>
+<span id="cb7-7"><a href="#cb7-7"></a>  tensor (<span class="dt">Day</span> fb gc bca) <span class="ot">=</span> <span class="dt">F</span> (<span class="fu">fmap</span> bca (unF fb) <span class="op">&lt;*&gt;</span> unF gc)</span></code></pre></div>
+<p>The tensor is nothing more than a generalisation of <code>liftA2</code>, lifting binary functions over applicatives.</p>
+    </div>
+        <div class="opacity08"><small>
+                <i>April 10, 2020</i>
+        </small></div>
+</div>
+]]></description>
+    <pubDate>Fri, 10 Apr 2020 23:43:00 UT</pubDate>
+    <guid>https://ennui.me/2020-04-03%20X%20is%20just%20a%20monoid%20of%20Category%20Of%20Y%20Part%202/</guid>
+    <dc:creator>Eben Till</dc:creator>
+</item>
+<item>
+    <title>X Is Simply A Monoid In The Category Of Y-functor Part 1</title>
+    <link>https://ennui.me/2020-04-03%20X%20is%20just%20a%20monoid%20of%20Category%20Of%20Y%20Part%201/</link>
+    <description><![CDATA[<div id="primary">
+    <div class="inside">
+        <h1 class="title">X Is Simply A Monoid In The Category Of Y-functor Part 1</h1>
+        <p><em>(N.B, the following are understandings resulting from reading the wonderful paper ‘Notions of Computation as Monoids’, the following Haskell extensions are needed: GADTs, TypeOperators, DerivingFunctor)</em></p>
+<p>If you’ve ever witnessed someone ask what a monad is, you’ve undoubtedly watched them be hit with a pithy, unoriginal “a monad is the monoid in the category of endofunctors” by some smart arse.</p>
+<p>The person who asked is confused, you’re giving up halfway into your twelve page running metaphor on why monads are burritos and you just know the person who derailed the question is wearing a shit eating grin. <em>What does it even mean?</em> First things, first. What is a monoid?</p>
+<p><em>“In abstract algebra, a branch of mathematics, a monoid is an algebraic structure with a single associative binary operation and an identity element.”</em></p>
+<p>More nerd words, we’re getting nowhere. How about instead:</p>
+<p><em>“Take some type of value, define a function that takes two values of this type and returns one of the same type. Also, there’s going to need to be a value that doesn’t really do anything”</em></p>
+<p>Better. In fact, there’s two monoids we’ve been exposed to all of our lives: not only do integers form a monoid with both addition as the binary operation and <code>0</code> as the identity, they again form a monoid with multiplication with <code>1</code> acting as the identity. Strings form a monoid with concatanation and an empty string etc. In fact, leveraging the <code>Maybe</code> monad we get monoids for any type for free… but we’re getting ahead of ourselves.</p>
+<p>Armed with the above, there’s a few rules to follow to make a lawful monoid:</p>
+<ul>
+<li><p>Associativity. Our binary operation, must always produce the same result no matter the precedence. E.g 1 * (2 * 3) ≡ (1 * 2) * 3</p></li>
+<li><p>our identity works on the left: 1 * 2 ≡ 2</p></li>
+<li><p>our identity works on the right: 2 * 1 ≡ 2</p></li>
+</ul>
+<p>So what are we to do about this enigmatic endofunctor? Let’s dampen expectations, <em>all</em> functors in Haskell are endofunctors. An endofunctor maps a category to itself, in Haskell everything exists within the category of <code>Set</code>.</p>
+<p>Hmmm, but what is a functor? A functor maps morphisms. Or less succinctly, given a value in some box, a function expecting a plain value not in a box, we’ll get a new, boxed value of the function applied to the value.</p>
+<p>Lists form functors, so let’s think of the list as the box. If we have a list of numbers and we apply a function to this box, we get a new box of numbers. In Haskell, <code>fmap</code> is the function to show a functor mapping</p>
+<p><code>fmap (+1) [1,2,3] ≡ [2,3,4]</code></p>
+<p>Just like monoids, we have laws to follow:</p>
+<ul>
+<li><p>Identity must be preserved, the functor is of inconsequence. For the integers we have zero as an identity, for functions there is an identity function (<code>id</code>) and it’ll just return any value passed, i.e <code>f(x) = x</code> so, <code>fmap id ≡ id</code></p></li>
+<li><p>Function mappings compose <code>(fmap f) ∘ (fmap g) ≡ fmap (f ∘ g)</code></p></li>
+</ul>
+<p>In generalising monoids from our classical understanding on concrete types to over functors, our product changes. The product of functors is composition, i.e <code>Functor f, Functor g =&gt; f (g)</code>. Declaring a type operator makes this a little more familiar: <code>type (f :*: g) a = f (g a)</code></p>
+<p>Now, we also need an identity:</p>
+<p><code>data Identity a = Identity a deriving (Functor, Show)</code></p>
+<p>Armed with a product and identity, let’s create a new monoid class avoiding any previous definitions.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">class</span> <span class="dt">Functor</span> m <span class="ot">=&gt;</span> <span class="dt">Monoid'</span> m <span class="kw">where</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="ot">  unit ::</span> <span class="dt">Identity</span> a <span class="ot">-&gt;</span> m a</span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="ot">  tensor ::</span> (m <span class="op">:*:</span> m) a <span class="ot">-&gt;</span> m a</span></code></pre></div>
+<p>A generalised algebraic datatype to wrap existing monads:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">data</span> <span class="dt">Monad'</span> m a <span class="kw">where</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a>  <span class="dt">M'</span><span class="ot"> ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> m a <span class="ot">-&gt;</span> <span class="dt">Monad'</span> m a</span></code></pre></div>
+<p>With this, a function to unwrap the algebraic datatype:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1"></a><span class="ot">unM' ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">Monad'</span> m a <span class="ot">-&gt;</span> m a</span>
+<span id="cb3-2"><a href="#cb3-2"></a>unM' (<span class="dt">M'</span> a) <span class="ot">=</span> a</span></code></pre></div>
+<p>Thus, with a definition of a functor, wrapping any existing monad inside of our new, monad-adjacent instance gives rise to a monoid.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">instance</span> (<span class="dt">Monad</span> m, <span class="dt">Functor</span> m) <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Monad'</span> m) <span class="kw">where</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a>  <span class="fu">fmap</span> f (<span class="dt">M'</span> x) <span class="ot">=</span> <span class="dt">M'</span> (<span class="fu">fmap</span> f x)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">instance</span> (<span class="dt">Monad</span> m, <span class="dt">Functor</span> m) <span class="ot">=&gt;</span> <span class="dt">Monoid'</span> (<span class="dt">Monad'</span> m) <span class="kw">where</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a>  unit (<span class="dt">Identity</span> x) <span class="ot">=</span> <span class="dt">M'</span> <span class="op">$</span> <span class="fu">return</span> x</span>
+<span id="cb5-3"><a href="#cb5-3"></a>  tensor (<span class="dt">M'</span> x) <span class="ot">=</span> <span class="dt">M'</span> <span class="op">$</span> (unM' <span class="op">=&lt;&lt;</span> x)</span></code></pre></div>
+<p>You should be able to see that the unit is nothing more than the <code>return</code>.</p>
+<p>The tensor I have lazily, and with great malice aforethought, buried the lead… The tensor of monads would be <code>join</code>, but an application of <code>UnM'</code> is required over the result - the pattern of the composition <code>fmap . join</code> is precisely the bind of a monad.</p>
+    </div>
+        <div class="opacity08"><small>
+                <i>April  2, 2020</i>
+        </small></div>
+</div>
+]]></description>
+    <pubDate>Thu, 02 Apr 2020 23:25:00 UT</pubDate>
+    <guid>https://ennui.me/2020-04-03%20X%20is%20just%20a%20monoid%20of%20Category%20Of%20Y%20Part%201/</guid>
+    <dc:creator>Eben Till</dc:creator>
+</item>
+<item>
+    <title>Functors For Nothing, Monads For Free</title>
+    <link>https://ennui.me/2019-03-01%20Functors_For_Nothing_Monads_For_Free/</link>
+    <description><![CDATA[<div id="primary">
+    <div class="inside">
+        <h1 class="title">Functors For Nothing, Monads For Free</h1>
+        <p>To the delight of functional programmers and the umbrage of everyone else, Monads have crept their way into Real World™ programming.</p>
+<p>Being a perspicacious programmer you’ve noticed that from <code>Promises</code> in JavaScript ES6 to the <code>Maybe</code>-esque null-coalescing operator introduced in C# 6, the once feared M-word is not only extant but here to stay.</p>
+<p>So, having ham-fisted a monad or two in a project and taken a cursory look at the <code>mtl</code> library you’ve got a chip on your shoulder. Once again you’re ahead of the curve, you fear no interview questions! You can now say in a droll voice and with an air of authority at dinner parties “of course, a monad is simply a monoid in the category of endofunctors”. The opposite sex swoons.</p>
+<p>But there’ve been whispers, rumours. There’s a new kid on the block: <code>Free Monads</code>. Tide, time and computer science stop for no man, the unusually far-sighted 12<sup>th</sup> century adage goes.</p>
+<p>There’s a number of good blog posts out there but personally, I find them prolix and unclear in their connection to traditional monads for the uninitiated. Allow me to give a cursory overview of implementing a free monad from scratch to applying it - though in keeping it simple and bridging understanding we’ll have to gloss over the algebraic syntax tree properties that make free monads special for now.</p>
+<hr class="section-break">
+<p>First, what is a free monad? In short, a free monad is a way of taking any data structure that forms a functor, and getting a monad for no extra effort. Nothing. <em>Free</em>. Through just defining a functor instance you’ve now got do-notation and a monad transformer!</p>
+<p>The title of this post alludes to the <code>Maybe</code> data type; for the purposes of illustrating exactly how we can create a monad from just a functor, I’m instead going to use an isomorphism of <code>Maybe</code>. Where <code>Maybe</code> is defined:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">data</span> <span class="dt">Maybe</span> a <span class="ot">=</span> <span class="dt">Just</span> a <span class="op">|</span> <span class="dt">Nothing</span></span></code></pre></div>
+<p>We will define a new F-Algebra, though a facsimile. Thus allowing us to start with nothing predefined for us:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">data</span> <span class="dt">StatusF</span> <span class="ot">=</span> <span class="dt">Success</span> a <span class="op">|</span> <span class="dt">Failure</span> </span></code></pre></div>
+<p>Now we have a data structure that models two states, augmenting a pure value with whether there was success, and with it the valid value, or failure which will instead have an absence of a value.</p>
+<p>As we know, a data structure alone does not a monad, applicative or functor make. So we need a functor instance for this:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">instance</span> <span class="dt">Functor</span> <span class="dt">StatusF</span> <span class="kw">where</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a>  <span class="fu">fmap</span> f (<span class="dt">Success</span> x) <span class="ot">=</span> <span class="dt">Success</span> (f x)</span>
+<span id="cb3-3"><a href="#cb3-3"></a>  <span class="fu">fmap</span> _ <span class="dt">Failure</span> <span class="ot">=</span> <span class="dt">Failure</span></span></code></pre></div>
+<p>Et voilà! Let’s define a convenient type synonym, equipping <code>StatusF</code> with <code>Free</code> from <code>Control.Monad.Free</code>:</p>
+<p><code>type Status a = Free StatusF a</code></p>
+<p>And we’ve got ourselves a free monad. We can use do-notation to model computations with a context of failure - and we did it all ourselves.</p>
+<p>Let’s define a couple of helper functions to save typing</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1"></a><span class="ot">success ::</span> a <span class="ot">-&gt;</span> <span class="dt">Status</span> a</span>
+<span id="cb4-2"><a href="#cb4-2"></a>success <span class="ot">=</span> liftF <span class="op">.</span> <span class="dt">Success</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a></span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="ot">failure ::</span> <span class="dt">Status</span> a</span>
+<span id="cb4-5"><a href="#cb4-5"></a>failure <span class="ot">=</span> liftF <span class="dt">Failure</span></span></code></pre></div>
+<p>We’ve taken the pure constructors we defined in the data type and composed them with <code>liftF</code> from <code>Control.Monad.Free</code> - taking the results into the realm of free monad.</p>
+<p>So let’s see it in action. With nothing defined other than a functor instance, no behind the curtains trickery, we’ve got a monad complete with do notation. For a contrived example, let’s show a safe version of the <code>head</code> function that won’t blow up when passed an empty list:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1"></a><span class="ot">safeHead ::</span> [a] <span class="ot">-&gt;</span> <span class="dt">Status</span> a</span>
+<span id="cb5-2"><a href="#cb5-2"></a>safeHead xs <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a>    x <span class="ot">&lt;-</span> myTail xs</span>
+<span id="cb5-4"><a href="#cb5-4"></a>    <span class="fu">return</span> x</span>
+<span id="cb5-5"><a href="#cb5-5"></a>  <span class="kw">where</span> myTail (x<span class="op">:</span>xs) <span class="ot">=</span> success x</span>
+<span id="cb5-6"><a href="#cb5-6"></a>        myTail []     <span class="ot">=</span> failure </span></code></pre></div>
+<p>With <code>FoldFree id</code> and providing a traditional monad implementation for <code>StatusF</code> we can prove the two implementations isomorphic. I leave this, of course, as an exercise to the reader.</p>
+<hr class="section-break">
+<p>A single layer monad however is limited in application. What if we wanted to extend <code>State</code>, <code>Reader</code> or, the forbidden fruit, <code>IO</code> with our newfangled monad?</p>
+<p>Fortunately for us, the <code>Free</code> monad is hiding more than it lets on: it’s already using transformer, composed with <code>Identity</code> as its base. Let’s ditch <code>Control.Monad.Free</code> and instead use the following imports:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">import</span> <span class="dt">Control.Monad.Trans.Free</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a><span class="kw">import</span> <span class="dt">Control.Monad.Trans</span> (lift)</span></code></pre></div>
+<p>Our previously defined <code>Status</code> monad is constrained to having <code>Identity</code> as its base, so we’ll have to define a new type that will let us choose an underlying monad to add our effect to:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">type</span> <span class="dt">StatusT</span> m a <span class="ot">=</span> <span class="dt">FreeT</span> <span class="dt">StatusF</span> m a</span></code></pre></div>
+<p>Those helper functions we defined earlier, we simply change the types and we’ve got functions that can lift into our transformer!</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1"></a><span class="ot">success ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">StatusT</span> m a</span>
+<span id="cb8-2"><a href="#cb8-2"></a><span class="ot">failure ::</span> <span class="dt">Monad</span> m <span class="ot">=</span> <span class="dt">StatusT</span> m a </span></code></pre></div>
+<p>And so we enter contrived example number two: workplace password security is at an all time low. If having a password length greater than five isn’t going to stop hackers, nothing will says management. Ok so we’ve got a requirement that can pass or fail, let’s write a function for it:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1"></a><span class="ot">validation ::</span> <span class="dt">Monad</span> m <span class="ot">=&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">StatusT</span> m <span class="dt">String</span></span>
+<span id="cb9-2"><a href="#cb9-2"></a>validation password</span>
+<span id="cb9-3"><a href="#cb9-3"></a>  <span class="op">|</span> (<span class="fu">length</span> password) <span class="op">&gt;</span> <span class="dv">5</span> <span class="ot">=</span> success password</span>
+<span id="cb9-4"><a href="#cb9-4"></a>  <span class="op">|</span> <span class="fu">otherwise</span> <span class="ot">=</span> failure</span></code></pre></div>
+<p>We’ve now got a function that will work for any monad passed into it. As we’re getting user input we’re interested in <code>IO</code>:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1"></a><span class="ot">validateInput ::</span> <span class="dt">StatusT</span> <span class="dt">IO</span> <span class="dt">String</span></span>
+<span id="cb10-2"><a href="#cb10-2"></a>validateInput <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb10-3"><a href="#cb10-3"></a>  input <span class="ot">&lt;-</span> lift <span class="fu">getLine</span></span>
+<span id="cb10-4"><a href="#cb10-4"></a>  validation input</span></code></pre></div>
+<p>Notice the <code>lift</code> from the <code>Control.Monad.Trans</code> package, it’s not a typo. We need to lift from a <em>regular</em> monad to a free transformer so <code>liftF</code> is no good for us here.</p>
+<p>So far so good. But how do we get results out of it? At the start I hand waved away the structure of <code>Free</code> - but now we’ve got to face it. <code>Free</code>’s strength comes from building up a structure as works its magic. The lisp veterans among you will know how powerful this is. However, as we’re trying to imitate the <a href="https://en.wikipedia.org/wiki/Forgetful_functor">forgetful</a> nature of a monad we’re going to have to interpret this tree.</p>
+<p><code>Free</code> can be thought of as a tree structure: the eponymous <code>Free</code> constructor creates its branches, and <code>Pure</code> is its leaves.</p>
+<p>So, with our vague understanding we know we’re going to have to check our two <code>Free</code> elements and the <code>Pure</code> leaf</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1"></a><span class="ot">runStatusIO ::</span> <span class="dt">StatusT</span> <span class="dt">IO</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">IO</span> ()</span>
+<span id="cb11-2"><a href="#cb11-2"></a>runStatusIO f <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb11-3"><a href="#cb11-3"></a>  x <span class="ot">&lt;-</span> runFreeT f</span>
+<span id="cb11-4"><a href="#cb11-4"></a>  <span class="kw">case</span> x <span class="kw">of</span></span>
+<span id="cb11-5"><a href="#cb11-5"></a>    <span class="dt">Pure</span> r <span class="ot">-&gt;</span> <span class="fu">print</span> r</span>
+<span id="cb11-6"><a href="#cb11-6"></a>    <span class="dt">Free</span> (<span class="dt">Success</span> x) <span class="ot">-&gt;</span> runStatusIO x</span>
+<span id="cb11-7"><a href="#cb11-7"></a>    <span class="dt">Free</span> (<span class="dt">Failure</span>) <span class="ot">-&gt;</span> <span class="fu">print</span> <span class="st">&quot;Not good enough!&quot;</span></span></code></pre></div>
+<p>So what’re we doing here? It takes a free monad transformer as an input and runs <code>runFreeT</code> on it and binds it to x. <code>runFreeT</code> is a function that evaluates the first layer of structure, in essence it steps through it one at a time.</p>
+<p>After evaluating the output we’re going to want to do one of three things:</p>
+<ol type="1">
+<li><p>If it’s a <code>Pure</code> value we know we’re at the bottom of the structure and can stop recursing here and print the value.</p></li>
+<li><p>A <code>Success</code> means we’re headed in the right direction, we need to dig deeper to get to our value. The structure thus far is put right back into the function again.</p></li>
+<li><p><code>Failure</code> is a short circuit, we can stop here and admonish users as neccessary.</p></li>
+</ol>
+<p>And we’ve done it! <code>Free</code> is nothing to fear. To be clear, the above doesn’t do anything you couldn’t do with <code>Monad</code>. The real power of <code>Free</code> I plan to show at a later date, working with the built up structure we can accomplish different ways of interpreting an algebraic syntax tree - whether skipping branches or evaluating it under different contexts.</p>
+    </div>
+        <div class="opacity08"><small>
+                <i>February 28, 2018</i>
+        </small></div>
+</div>
+]]></description>
+    <pubDate>Wed, 28 Feb 2018 20:52:00 UT</pubDate>
+    <guid>https://ennui.me/2019-03-01%20Functors_For_Nothing_Monads_For_Free/</guid>
+    <dc:creator>Eben Till</dc:creator>
+</item>
+
+    </channel>
+</rss>

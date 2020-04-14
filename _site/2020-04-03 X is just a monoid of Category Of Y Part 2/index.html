@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=[widest centered div];" />
+        <title>X Is Simply A Monoid In The Category Of Y-functor Part 2 - Ennui & Me</title>
+        <link rel="alternate" type="application/rss+xml" href="/rss.xml" />
+
+        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-115020983-1"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'UA-115020983-1');
+        </script>
+
+
+
+        <link rel="stylesheet" type="text/css" href="/css/default.css" />
+    </head>
+    <body>
+        <div id="header">
+          <div id="logo">
+            <a href="/">ENNUI & ME</a>
+          </div>
+        </div>
+
+        <div id="primary">
+    <div class="inside">
+        <h1 class="title">X Is Simply A Monoid In The Category Of Y-functor Part 2</h1>
+        <p>Monads as monoids in the category of endofunctors are passé. They’re Banksy. They’re mid-2000’s The Killers. Interesting and exciting when we first discovered them, now trite and only to be enjoyed ironically.</p>
+<p>Applicative as monoids in the category of endofunctors <em>though</em>. These are Flying Lotus. They are Finnegan’s Wake. They are the Fluxus movement. They are all things you say you understand but deep down, we know it’s a trendy facade.</p>
+<p>First, a flying tour of an applicative functor. As the name implies, extend these upon a functor. If we map a function of greater than one arguements over a functor, we get a partially applied function inside the functor:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1"></a>  <span class="fu">fmap</span> (<span class="op">+</span>) (<span class="dt">Just</span> <span class="dv">2</span>) <span class="ot">=</span> <span class="dt">Just</span> (<span class="dv">2</span><span class="op">+</span>)</span></code></pre></div>
+<p>We’ve got no easy way to <em>apply</em> this, and none that work for all cases. Enter applicatives. The <code>&lt;*&gt;</code> operator lets us apply a functor function on the left over a functor value, e.g:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1"></a>  (<span class="fu">fmap</span> (<span class="op">+</span>) (<span class="dt">Just</span> <span class="dv">2</span>)) <span class="op">&lt;*&gt;</span> <span class="dt">Just</span> <span class="dv">3</span> <span class="op">==</span> <span class="dt">Just</span> <span class="dv">5</span></span></code></pre></div>
+<p>Applicatives form what is known as a <em>strong lax monoidal functor</em>. Don’t pout, look on the bright side - we know what <em>half</em> of those words mean. Let’s start with the easy part; all applicatives in Haskell are strong. The strength is defined by a natural transformation of <em>stA,B:A⊗F B→F(A⊗B)</em> , in Haskell that is:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1"></a><span class="ot">st ::</span> (a, f b) <span class="ot">-&gt;</span> f (a, b) </span>
+<span id="cb3-2"><a href="#cb3-2"></a>st (a, fb) <span class="ot">=</span> <span class="fu">fmap</span> ((,) a) fb</span></code></pre></div>
+<p>A <em>lax monoidal functor</em> is a functor between two categories that preserves the monoid each form together with a natural transformation:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1"></a><span class="ot">eta ::</span> <span class="dt">Applicative</span> f <span class="ot">=&gt;</span> (f a <span class="ot">-&gt;</span> f b) <span class="ot">-&gt;</span> f a <span class="ot">-&gt;</span> f b</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="ot">unit ::</span> f ()</span></code></pre></div>
+<p>We’re putting together all the puzzle pieces to create a monoid in the category of endofunctors, but there will need to be a different kind of tensor - Monads compose, for Applicatives we’ll need to use what is known as the Day convolution. Contrary to <em>Notions of Computation as Monoids</em>, I’ve curried the function and had to make the existential quantification explicit:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">data</span> <span class="dt">Day</span> f g a <span class="ot">=</span> <span class="kw">forall</span> b c<span class="op">.</span> <span class="dt">Day</span> (f b) (g c) (b <span class="ot">-&gt;</span> c <span class="ot">-&gt;</span> a)</span></code></pre></div>
+<p>It can be thought of as such: a box <code>f</code> of <code>b</code>’s, a box <code>g</code> of <code>c</code>’s, with a function that takes <code>b</code> and <code>c</code> and returns some <code>a</code>.</p>
+<p>With the existential quantifications, we can’t derive functor with GHC but it’s trivial enough.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">instance</span> (<span class="dt">Functor</span> f, <span class="dt">Functor</span> g) <span class="ot">=&gt;</span> <span class="dt">Functor</span> (<span class="dt">Day</span> f g) <span class="kw">where</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a>  <span class="fu">fmap</span> f (<span class="dt">Day</span> x y g) <span class="ot">=</span> <span class="dt">Day</span> x y <span class="op">$</span> \b c <span class="ot">-&gt;</span> f (g b c)</span></code></pre></div>
+<p>Our identity remains the same but, as mentioned previously, the tensor has now changed. Our new tensor is thus:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">class</span> <span class="dt">Functor</span> m <span class="ot">=&gt;</span> <span class="dt">Monoid'</span> m <span class="kw">where</span></span>
+<span id="cb7-2"><a href="#cb7-2"></a><span class="ot">  unit ::</span> a <span class="ot">-&gt;</span> m a</span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="ot">  tensor ::</span> <span class="dt">Day</span> m m a <span class="ot">-&gt;</span> m a</span>
+<span id="cb7-4"><a href="#cb7-4"></a></span>
+<span id="cb7-5"><a href="#cb7-5"></a><span class="kw">instance</span> <span class="dt">Applicative</span> f <span class="ot">=&gt;</span> <span class="dt">Monoid'</span> (<span class="dt">App</span> f) <span class="kw">where</span></span>
+<span id="cb7-6"><a href="#cb7-6"></a>  unit (<span class="dt">Identity</span> x) <span class="ot">=</span> <span class="dt">F</span> <span class="op">$</span> <span class="fu">pure</span> x</span>
+<span id="cb7-7"><a href="#cb7-7"></a>  tensor (<span class="dt">Day</span> fb gc bca) <span class="ot">=</span> <span class="dt">F</span> (<span class="fu">fmap</span> bca (unF fb) <span class="op">&lt;*&gt;</span> unF gc)</span></code></pre></div>
+<p>The tensor is nothing more than a generalisation of <code>liftA2</code>, lifting binary functions over applicatives.</p>
+    </div>
+        <div class="opacity08"><small>
+                <i>April 10, 2020</i>
+        </small></div>
+</div>
+
+
+
+        <div id="footer"></div>
+    </body>
+</html>
